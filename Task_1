@@ -1,0 +1,78 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
+from sklearn.metrics import accuracy_score, classification_report
+
+train_data = pd.read_csv('C:/Users/perwe/PycharmProjects/Task 1/train_data.txt',sep=':::',engine='python',
+                         names=['Title','Genre','Description'])
+print(train_data)
+
+test_data = pd.read_csv('C:/Users/perwe/PycharmProjects/Task 1/test_data.txt',sep=':::',engine='python',
+                        names=['Title','Predicted_Genre','Description'])
+print(test_data)
+
+print(train_data.info())
+print(test_data.info())
+
+print(train_data.isnull().sum())
+print(test_data.isnull().sum())
+
+train_data.dropna(inplace=True)
+test_data.dropna(inplace=True)
+
+genre_categories= train_data['Genre'].unique()
+print(genre_categories)
+
+genre_number= train_data['Genre'].value_counts()
+print(genre_number)
+
+plt.figure(figsize=(20,10))
+plt.bar(genre_categories,genre_number,color='maroon')
+plt.tick_params(axis='x', labelsize=10, rotation=45)
+plt.title('Number Of Movies By Genre',fontsize=16)
+plt.ylabel('Number of Movies',fontsize=14)
+plt.xlabel('Genre',fontsize=14)
+plt.show()
+
+print(train_data.columns)
+
+train_data["genre_id"], genre_mapping = pd.factorize(train_data["Genre"])
+
+vectorizer = TfidfVectorizer(stop_words='english', max_features=5000)
+X = vectorizer.fit_transform(train_data["Description"])
+y = train_data["genre_id"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+models = {
+    "Naive Bayes": MultinomialNB(),
+    "Logistic Regression": LogisticRegression(max_iter=1000),
+    "SVM":LinearSVC(C=1)
+}
+
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    print(f"{name} Accuracy: {accuracy_score(y_test, y_pred):.2f}")
+    print(classification_report(y_test, y_pred,zero_division=0))
+
+
+def predict_genre(description, model_name="Logistic Regression"):
+    transformed_plot = vectorizer.transform([description])
+    model = models[model_name]
+    predicted_label = model.predict(transformed_plot)[0]
+    return genre_mapping[predicted_label]
+
+test_data["Predicted_Genre"] = test_data["Description"].apply(lambda x: predict_genre(x, "Logistic Regression"))
+
+output_file = "predicted_test_data.csv"
+test_data.to_csv(output_file, index=False)
+print(f"Predictions saved to {output_file}")
+
+predicted_data = pd.read_csv('predicted_test_data.csv')
+print(predicted_data.head())
+
