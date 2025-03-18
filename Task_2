@@ -1,0 +1,92 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+from matplotlib import pyplot as plt
+from sklearn.model_selection import train_test_split
+from imblearn.over_sampling import SMOTE
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+
+train_data=pd.read_csv("fraudTrain.csv")
+test_data=pd.read_csv("fraudTest.csv")
+
+print(train_data.head())
+print(test_data.head())
+
+print(train_data.shape)
+print(test_data.shape)
+
+print(train_data.columns)
+print(test_data.columns)
+
+print(train_data.info())
+print(test_data.info())
+
+print(train_data.isna().sum())
+print(test_data.isna().sum())
+
+sns.countplot(x=train_data["is_fraud"])
+plt.title("Fraud vs Non-Fraud Transactions")
+plt.show()
+
+train_data.dropna(inplace=True)
+test_data.dropna(inplace=True)
+
+X = train_data.drop(columns=["is_fraud"])
+
+X = X.select_dtypes(include=[np.number])
+
+y = train_data["is_fraud"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+
+models = {
+    "Logistic Regression": LogisticRegression(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier(n_estimators=50, max_depth=10, n_jobs=-1)
+}
+
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    print(f"\n{name} Performance:")
+    print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+    print(f"Precision: {precision_score(y_test, y_pred):.4f}")
+    print(f"Recall: {recall_score(y_test, y_pred):.4f}")
+    print(f"F1 Score: {f1_score(y_test, y_pred):.4f}")
+    print(classification_report(y_test, y_pred))
+
+
+def predict_fraud(file_path, model, scaler, feature_columns):
+
+    data = pd.read_csv(file_path)
+
+    data = data[feature_columns]
+
+    data = data.select_dtypes(include=[np.number])
+
+    data_scaled = scaler.transform(data)
+
+    predictions = model.predict(data_scaled)
+
+    data["Prediction"] = predictions
+
+    return data
+
+model_selected = models["Logistic Regression"]
+feature_columns = X.columns
+
+predicted_df = predict_fraud("fraudTest.csv", model_selected, scaler, feature_columns)
+
+predicted_df.to_csv("predicted_result.csv", index=False)
+
+result=pd.read_csv("predicted_result.csv")
+print(result.head())
